@@ -1,0 +1,14 @@
+--bai tap 1
+  select name
+from STUDENTS 
+where marks > 75
+order by right(name,3), id asc
+
+--baitap2
+  select
+user_id,
+concat(upper(left(name,1)), lower(substring(name from 2 for 4))) as name
+from users
+
+--baitap3
+  
