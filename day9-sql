@@ -1,0 +1,42 @@
+--baitap 1--
+SELECT 
+sum(case when device_type = 'laptop' then 1 else 0 end) as laptop_views,
+sum(case when device_type  in ('tablet','phone')  then 1 else 0 end) as phone_views
+FROM viewership;
+
+--baitap 2--
+select *,
+case 
+when x + y > z and x + z > y and z + y > x then 'Yes'
+else 'No'
+end as triangle
+from Triangle
+
+--bai tap 3--
+select 
+round( 100 * sum (case when call_category IS NULL 
+  OR call_category = 'n/a' then 1 else 0 end )/ count(case_id),1) as uncategorised_call_pct
+from callers
+
+khong hieu sao em chay ra NULL nen co gi anh/chi check giup em nha TT
+
+--baitap 4
+  select name
+from customer
+where referee_id != 2 or referee_id is NULL
+
+--baitap 5
+  select 
+survived
+,
+sum(
+case when pclass = 1 then 1 else 0
+end) as first_class,
+sum(
+case when pclass = 2 then 1 else 0
+end) as second_class,
+sum(
+case when pclass = 3 then 1 else 0
+end) as third_class
+from titanic
+group by survived ;
