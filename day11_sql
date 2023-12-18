@@ -1,0 +1,30 @@
+--baitap 1--
+  select 
+    b.continent,
+    floor(avg(a.population))
+from city as  a
+join country as b
+where a.countrycode = b.code
+group by  b.continent
+
+--baitap 2--
+    
+      SELECT 
+  round(cast(count(b.email_id) filter (where b.signup_action = 'Confirmed') as decimal)
+        /  count(a.email_id) ,2)  as confirm_rate
+FROM emails as a
+join texts  as b
+on a.email_id = b.email_id
+
+--bai tap 3--
+      SELECT 
+  b.age_bucket,
+round(100* sum(a.time_spent) filter (where a.activity_type = 'send')/ sum(a.time_spent),2) as send_perc,
+round(100* sum(a.time_spent) filter (where a.activity_type = 'open')/ sum(a.time_spent),2) as open_perc
+FROM activities a
+join age_breakdown b
+on a.user_id = b.user_Id
+where a.activity_type in ('open', 'send')
+group by 1
+
+  ---baitap 4
