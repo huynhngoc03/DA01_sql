@@ -27,4 +27,103 @@ on a.user_id = b.user_Id
 where a.activity_type in ('open', 'send')
 group by 1
 
-  ---baitap 4
+  ---baitap 4--
+SELECT 
+  a.customer_id
+FROM customer_contracts a
+join products b
+on a.product_Id = b.product_id
+group by 1
+having count(DISTINCT b.product_category) =3
+
+--baitap 5--
+select
+    a.employee_id,
+    a.name,
+    count(b.employee_Id) reports_count,
+    ceil(avg(b.age)) as average_age
+from employees a
+join employees b
+on a.employee_Id = b.reports_to
+
+--baitap 6--
+select 
+    a.product_name product_name,
+    sum(b.unit) as unit
+from products a
+join orders b
+on a.product_id = b.product_id
+where extract(month from order_date) = '02'
+group by 1
+having sum(b.unit) >=100
+
+--baitap 7--
+SELECT 
+  a.page_id
+FROM pages a
+left JOIN page_likes b
+on a.page_id = b.page_id
+where b.page_id is null
+group by 1
+order by 1 asc
+
+--midterm test--
+
+--Question 1--
+  select 
+  	distinct replacement_cost
+  from film
+  order by 1 asc
+
+--question 2--
+
+select 
+sum(case when replacement_cost between 9.99 and 19.99 then 1 else 0 end) as low,
+sum(case when replacement_cost between 20.00  and 24.99 then 1 else 0 end) as medium,
+sum(case when replacement_cost between 25.00  and 29.99 then 1 else 0 end) as high
+from film
+
+
+--question 3--
+
+select 
+	a.title,
+	a.length,
+	c.name
+from film a
+join film_category b
+on a.film_Id = b.film_id
+join category c
+on b.category_id = c.category_id
+where c.name like '%Drama%' or c.name like '%Sports%'
+order by 2 desc
+
+--question 4--
+select 
+	c.name,
+	count(a.title) as titles
+from film a
+join film_category b
+on a.film_Id = b.film_id
+join category c
+on b.category_id = c.category_id
+group by 1
+order by 2 desc
+
+--question 5--
+select 
+ 	a.first_name,
+	a.last_name,
+	count(c.film_id)
+ from actor a
+ join film_actor b
+ on a.actor_Id = b.actor_id
+ join film c
+ on b.film_id = c.film_id
+ group by 1,2
+ order by 3 desc
+
+-- question 6--
+
+
+
