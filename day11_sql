@@ -124,6 +124,43 @@ select
  order by 3 desc
 
 -- question 6--
+select 
+	a.address_id
+from address a 
+left join customer b
+ on a.address_id = b.address_Id 
+where b.customer_id is null
 
+--question 7 --
+select 
+	select 
+	b.city, 
+	sum(e.amount) total_sale
+from country a	
+join city b
+on a.country_id = b.country_id
+join address c 
+on b.city_id = c.city_id
+join customer d
+on d.address_id = c.address_id
+join payment e
+on e.customer_id = d.customer_id
+group by b.city 
+order by 2 desc
 
+--question 8--
+select 
+	b.city || ' ' || a.country,
+	sum(e.amount) total_sale
+from country a	
+join city b
+on a.country_id = b.country_id
+join address c 
+on b.city_id = c.city_id
+join customer d
+on d.address_id = c.address_id
+join payment e
+on e.customer_id = d.customer_id
+group by 1 
+order by 2 asc
 
