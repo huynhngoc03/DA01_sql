@@ -1,0 +1,110 @@
+--baitap 1--
+
+  SELECT 
+extract(year from transaction_date) as year,
+product_id,
+spend as current_year,
+lag(spend) over (partition by product_id order by transaction_date) as prev_year_spend,
+round(100* (spend - lag(spend) over (partition by product_id order by transaction_date))/ lag(spend) over (partition by product_id order by transaction_date),2) as yoy_rate
+FROM user_transactions;
+
+--baitap 2 --
+  
+select 
+card_name,
+issued_amount
+from 
+(SELECT 
+card_name,
+issued_amount,
+rank() over (partition by card_name order by issue_year, issue_month) as rank
+FROM monthly_cards_issued) t1
+where rank = 1
+order by 2 desc
+
+  
+-- baitap 3--
+  
+with t1 as
+(SELECT 
+user_id, 
+spend,
+transaction_date,
+row_number () over (partition by user_id order by user_id,transaction_date) as row_num
+FROM transactions)
+SELECT 
+user_id,
+spend,
+transaction_date
+from t1
+where row_num = 3
+
+  --baitap 4 --
+with t1 as
+(SELECT 
+transaction_date,
+user_id,
+rank() over (partition by user_id order by transaction_date desc) as rank
+FROM user_transactions)
+
+select transaction_date,
+user_Id,
+count(transaction_date) as purchase_count
+from t1
+where rank = 1
+group by 1,2
+order by 1 
+
+  -- baitap 5 --
+  SELECT 
+user_Id, 
+tweet_date,
+round(avg(tweet_count) over(partition by user_id order by tweet_date rows
+between 2 preceding and current row),2) as rolling_avg_3rd
+FROM tweets;
+
+--baitap 6--
+  WITH t1 AS (
+  SELECT 
+    merchant_id, 
+    EXTRACT(EPOCH FROM transaction_timestamp - 
+      LAG(transaction_timestamp) OVER(
+        PARTITION BY merchant_id, credit_card_id, amount 
+        ORDER BY transaction_timestamp)
+    )/60 AS minute_difference 
+  FROM transactions) 
+
+SELECT COUNT(merchant_id) AS payment_count
+FROM t1 
+WHERE minute_difference <= 10;
+
+
+--baitap 7--
+  WITH t1 AS (
+SELECT category,
+       product,
+       SUM(spend) AS total_spend,
+       RANK() OVER(PARTITION BY category ORDER BY SUM(spend) DESC) as s_no
+FROM product_spend
+WHERE EXTRACT('YEAR' FROM transaction_date) = 2022
+GROUP BY category, product
+ORDER BY category, SUM(spend) DESC)
+
+SELECT category, product, total_spend
+FROM t1
+WHERE s_no <= 2;
+
+--baitap 8--
+
+  with cte AS(
+SELECT a.artist_name,
+dense_rank() over(ORDER BY COUNT(*) desc)
+FROM artists a
+JOIN songs s on a.artist_id=s.artist_id
+JOIN global_song_rank gsr on gsr.song_id=s.song_id
+where gsr.rank<=10
+GROUP BY a.artist_name)
+
+SELECT * from cte
+where dense_rank<=5
+  
