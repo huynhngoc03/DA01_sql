@@ -1,0 +1,132 @@
+--baitap1--
+  
+select
+ceil(100 * sum(case 
+when customer_pref_delivery_date  = order_date then 1 else 0 end)/ count(*)) as immediate_percentage
+from
+(select 
+*,
+row_number() over(partition by customer_id order by order_date asc) AS rn
+ from delivery
+) t1
+where rn = 1
+
+  --baitap 2--
+
+  with t1 as (
+select 
+player_id,
+event_date,
+min(event_date) over (partition by player_id) as first_date
+from activity)
+
+
+select 
+ROUND(
+    COUNT(DISTINCT player_id)/
+ (SELECT COUNT(DISTINCT player_id) 
+ FROM Activity),2) AS fraction
+from t1
+where datediff(event_date, t1.first_Date) =1
+
+
+  --baitap 3--
+
+  # Write your MySQL query statement below
+select
+id, 
+case when id % 2 = 1 then coalesce (lead(student) over(order  by id),student)
+else lag (student) over(order  by id) end student
+from seat
+
+  --baitap 4--
+  with t1 as
+(select
+visited_on,
+sum(amount) over (order by visited_on rows between 6 preceding and current row) amount,
+round(avg(amount) over (order by visited_on rows between 6 preceding and current row),2) average_amount,
+row_number () over(order by visited_on) rn
+from 
+(select
+visited_on,
+sum(amount) amount
+from customer
+group by 1
+) t2 )
+select 
+visited_on,
+amount,
+average_amount
+from t1
+where rn > 6
+order by 1
+
+  --baitap 5--
+
+  select 
+sum(tiv_2016) tiv_2016
+from insurance
+where (select 
+tiv_2015
+from insurance
+group by 1
+having count(*) > 1)
+and (lat, lon) in (SELECT 
+ lat,
+ lon
+FROM Insurance
+GROUP BY lat, lon
+having count(*) = 1)
+
+  --câu này nếu dùng window function thì cách làm như nào ạ--
+
+-- baitap 6 --
+
+  
+with t1 as (
+select 
+a.*,
+b.id as id_department,
+b.name as department,
+dense_rank () over (partition by a.departmentId  order by salary desc)  dk
+from employee a
+join Department  b
+on a.departmentid = b.id)
+select 
+department,
+name as employee,
+salary
+from t1 
+where dk <= 3
+
+--baitap 7--
+
+  with t1 as(
+select 
+person_name,
+sum(weight) over (ORDER BY turn) weight
+from queue)
+select person_name
+from t1 
+where weight <= 1000
+order by weight desc
+limit 1
+
+  --bai tap 8 --
+
+   with t1 as(
+ select 
+*,
+rank () over (partition by product_id order by change_date desc) r
+from products
+where change_date <= '2019-08-16')
+select product_id,
+new_price as price
+from t1
+where r = 1
+union
+select
+product_id,
+10 as price
+from products
+where product_id not in (select product_id from t1)
