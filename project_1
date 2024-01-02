@@ -111,3 +111,8 @@ select
 from t2
 where abs((QUANTITYORDERED - avg)/stddev) > 2
  
+update SALES_DATASET_RFM_PRJ
+set QUANTITYORDERED = (select avg(QUANTITYORDERED)
+	from SALES_DATASET_RFM_PRJ)
+where QUANTITYORDERED in (select QUANTITYORDERED from twt_out_lier)
+	
