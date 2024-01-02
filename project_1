@@ -1,0 +1,113 @@
+select * from SALES_DATASET_RFM_PRJ
+/* Chuyển đổi kiểu dữ liệu phù hợp cho các trường*/
+
+alter table SALES_DATASET_RFM_PRJ
+alter column ordernumber type integer using (trim(ordernumber) ::integer),
+alter column quantityordered type smallint using (trim(quantityordered) ::smallint),
+alter column orderlinenumber type smallint using (trim(orderlinenumber) ::smallint),
+alter column sales type numeric using (trim(sales) ::numeric),
+alter column orderdate type timestamp without time zone using (trim(orderdate) ::timestamp without time zone),
+alter column status type text using (trim(status) ::text),
+alter column productline type text using (trim(productline) ::text),
+alter column msrp type smallint using (trim(msrp) ::smallint),
+alter column customername type text using (trim(customername) ::text),
+alter column phone type varchar(20) using (trim(phone) ::varchar(20)),
+alter column addressline1 type text using (trim(addressline1) ::text),
+alter column addressline2 type text using (trim(addressline2) ::text),
+alter column city type text using (trim(city) ::text),
+alter column state type text using (trim(state) ::text),
+alter column postalcode type text using (trim(postalcode) ::text),
+alter column country type text using (trim(country) ::text),
+alter column territory type text using (trim(territory) ::text),
+alter column contactfullname type text using (trim(contactfullname) ::text)
+
+
+
+/* Check NULL/BLANK (‘’)  ở các trường: ORDERNUMBER, QUANTITYORDERED, PRICEEACH, ORDERLINENUMBER, SALES, ORDERDATE. */
+
+select 
+	ORDERNUMBER,
+	QUANTITYORDERED,
+	PRICEEACH,
+	ORDERLINENUMBER,
+	SALES,
+	ORDERDATE
+from  SALES_DATASET_RFM_PRJ 
+where 
+ORDERNUMBER IS NULL  OR
+QUANTITYORDERED IS NULL  OR
+PRICEEACH IS NULL  OR
+ORDERLINENUMBER IS NULL  OR
+SALES IS NULL  OR
+ORDERDATE IS NULL 
+
+/* Thêm cột CONTACTLASTNAME, CONTACTFIRSTNAME được tách ra từ CONTACTFULLNAME .  */
+
+alter table SALES_DATASET_RFM_PRJ
+alter column CONTACTLASTNAME type varchar(50),
+alter column CONTACTFIRSTNAME type varchar(50)
+
+UPDATE SALES_DATASET_RFM_PRJ
+SET 
+  CONTACTFIRSTNAME = UPPER(LEFT(SPLIT_PART(CONTACTFULLNAME, '-', 1), 1)) || LOWER(SUBSTRING(SPLIT_PART(CONTACTFULLNAME, '-', 1) FROM 2)),
+  CONTACTLASTNAME = UPPER(LEFT(SPLIT_PART(CONTACTFULLNAME, '-', -1), 1)) || LOWER(SUBSTRING(SPLIT_PART(CONTACTFULLNAME, '-', -1) FROM 2))
+  
+ /* Thêm cột QTR_ID, MONTH_ID, YEAR_ID lần lượt là Qúy, tháng, năm được lấy ra từ ORDERDATE  */
+ 
+ALTER TABLE SALES_DATASET_RFM_PRJ
+ADD COLUMN QTR_ID INTEGER,
+ADD COLUMN MONTH_ID INTEGER,
+ADD COLUMN YEAR_ID INTEGER;
+
+UPDATE SALES_DATASET_RFM_PRJ
+SET 
+  QTR_ID = EXTRACT(QUARTER FROM ORDERDATE),
+  MONTH_ID = EXTRACT(MONTH FROM ORDERDATE),
+  YEAR_ID = EXTRACT(YEAR FROM ORDERDATE)
+  
+  /* Hãy tìm outlier (nếu có) cho cột QUANTITYORDERED và hãy chọn cách xử lý cho bản ghi đó (2 cách) */
+  -- cach 1--
+  with twt_min_max as (
+  SELECT 
+  Q1 - 1.5 *IQR AS MIN,
+  Q3 + 1.5 * IQR AS MAX
+  FROM 
+  (select 
+  percentile_cont(0.25) within group (order by QUANTITYORDERED) as Q1,
+  percentile_cont(0.75) within group (order by QUANTITYORDERED) as Q3,
+  percentile_cont(0.75) within group (order by QUANTITYORDERED) -  percentile_cont(0.25) within group (order by QUANTITYORDERED) AS IQR
+  from SALES_DATASET_RFM_PRJ) T1)
+  -- xac dinh outlier--
+  select 
+  	ordernumber,
+	orderdate,
+	 QUANTITYORDERED
+  from  SALES_DATASET_RFM_PRJ
+  where QUANTITYORDERED < (select min from twt_min_max) or
+	QUANTITYORDERED > (select min from twt_min_max)	
+	
+ -- su dung z-score --
+  select 
+ avg(QUANTITYORDERED),
+ stddev(QUANTITYORDERED)
+from SALES_DATASET_RFM_PRJ
+
+ 
+ with t2 as (
+ select 
+ 	ordernumber,
+	orderdate,
+	 QUANTITYORDERED,
+	(select avg(QUANTITYORDERED)
+	from SALES_DATASET_RFM_PRJ) as avg,
+	(select stddev(QUANTITYORDERED)
+	from SALES_DATASET_RFM_PRJ) as stddev
+from SALES_DATASET_RFM_PRJ)
+
+select 
+	QUANTITYORDERED,
+	orderdate,
+	(QUANTITYORDERED - avg)/stddev as z_score
+from t2
+where abs((QUANTITYORDERED - avg)/stddev) > 2
+ 
