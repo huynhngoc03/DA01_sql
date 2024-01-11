@@ -1,0 +1,123 @@
+-- III. Tạo metric trước khi dựng dashboard
+create view vw_ecommerce_analyst as(
+WITH pct_change_revenue AS (
+  SELECT 
+    id,
+    created_at,
+    lag(created_at) OVER (ORDER BY created_at) AS previous_payment,
+    sale_price,
+    round(lag(sale_price) OVER (ORDER BY created_at), 2) AS previous_amount,
+    round(
+      (sale_price - lag(sale_price) OVER (PARTITION BY EXTRACT(MONTH FROM created_at) ORDER BY created_at))
+      / lag(sale_price) OVER (PARTITION BY EXTRACT(MONTH FROM created_at) ORDER BY created_at) * 100, 2
+    ) || '%' AS pct_change
+  FROM 
+    (
+      SELECT 
+        id,
+        DATE(created_at) AS created_at,
+        ROUND(SUM(sale_price), 2) AS sale_price
+      FROM 
+        bigquery-public-data.thelook_ecommerce.order_items
+      GROUP BY 1, 2 
+      ORDER BY 1 ASC
+    ) t1
+),
+
+
+ t2 as(
+
+ SELECT 
+    id,
+    created_at,
+    lag(created_at) OVER (ORDER BY created_at) AS previous_payment,
+    round(lag(order_id) OVER (ORDER BY created_at), 2) AS previous_amount,
+    round(
+      (order_id - lag(order_id) OVER (PARTITION BY EXTRACT(MONTH FROM created_at) ORDER BY created_at))
+      / lag(order_id) OVER (PARTITION BY EXTRACT(MONTH FROM created_at) ORDER BY created_at) * 100, 2
+    ) || '%' AS pct_change_order
+  FROM 
+    (
+      SELECT 
+        id,
+        DATE(created_at) AS created_at,
+        ROUND(SUM(order_id), 2) AS order_id
+      FROM 
+        bigquery-public-data.thelook_ecommerce.order_items
+      GROUP BY 1,2
+      ORDER BY 1 ASC
+    ) t1)
+
+select 
+  format_date('%Y-%m', a.created_at) as month,
+  extract(year from a.created_at) as year,
+  c.category as product_category,
+  sum(b.sale_price) as TPV,
+  sum(b.order_id) as TOV,
+  max(d.pct_change) as  Revenue_growth,
+  max(e.pct_change_order) as Order_growth,
+  round(sum(f.cost),2) as total_cost,
+  round(sum(b.sale_price) - sum(f.cost),2) as total_profit,
+  round(sum(b.sale_price) - sum(f.cost)/sum(f.cost),2) as profit_to_cost_ratio 
+from bigquery-public-data.thelook_ecommerce.orders a
+join bigquery-public-data.thelook_ecommerce.order_items b
+on a.order_id = b.order_id
+join bigquery-public-data.thelook_ecommerce.products c
+on b.id = c.id
+join pct_change_revenue  as d 
+on d.id = c.id
+join t2 e
+on d.id = e.id
+join bigquery-public-data.thelook_ecommerce.products  f
+on f.id = e.id
+group by 1,2,3
+order by 1)
+
+-- Tạo retention cohort analysis--
+with t1 as(
+select
+  user_id,
+  sale_price,
+  format_dATE('%Y-%m', DATE(first_purchase_date)) as cohort_date,
+  created_at,
+  (extract(year from created_at) - extract (year from first_purchase_Date)) *12
+  + (extract(month from created_at) - extract (month from first_purchase_Date)) +1 as index
+from
+(
+select
+user_id,
+sale_price,
+min(created_at) over (partition by user_id) as first_purchase_date,
+created_at
+from bigquery-public-data.thelook_ecommerce.order_items
+where created_at between '2019-01-06' and '2021-01-31')),
+
+t2 as
+(
+select
+cohort_date,
+index,
+count(distinct user_Id) as cnt
+from t1
+group by 1,2),
+
+cohort as(
+select 
+cohort_date,
+sum (case when index = 1 then cnt else 0 end) as m1,
+sum (case when index = 2 then cnt else 0 end) as m2,
+sum (case when index = 3 then cnt else 0 end) as m3,
+sum (case when index = 4 then cnt else 0 end) as m4
+from t2
+group by 1)
+
+select 
+cohort_date,
+round(100*m1/m1,2) || '%' as m1,
+round(100*m2/m1,2) || '%' as m2,
+round(100*m3/m1,2) || '%' as m3,
+round(100*m4/m1,2) || '%' as m4
+from cohort
+
+-- em làm ra kết quả cứ thấy sai sai nên chưa visual trên excel, có gì anh check kết quả giúp em nha--
+
