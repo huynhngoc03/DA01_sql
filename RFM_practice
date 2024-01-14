@@ -1,0 +1,37 @@
+/* bước 1: Tính giá trị R-F-M */
+with customer_rfm as (
+select
+a.customer_id,
+current_date - max(order_date) as R,
+count(distinct order_id) as F,
+sum(sales) as M
+from customer a
+join sales b
+on a.customer_id = b.customer_id
+group by 1),
+	
+
+/* bước 2: Chia các giá trị thành các khoảng trên thang điểm từ 1-5 */
+rfm_score as (
+select 
+customer_id,
+ntile(5) over (order by R desc) as R_Score,
+ntile(5) over (order by F desc) as F_score,
+ntile(5) over (order by M desc) as M_score
+from customer_rfm),
+
+/* bước 3:  phân nhóm theo tổ hợp r-f-m */
+
+rfm_final as(
+select
+customer_id,
+cast(R_score as varchar) || cast(F_score as varchar) || cast(M_score as varchar) as rfm_score
+from rfm_score)
+
+select 
+a.customer_id,
+b.segment
+from rfm_final a
+join segment_score b
+on a.rfm_score = b.scores
+
