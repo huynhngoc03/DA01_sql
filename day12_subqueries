@@ -1,0 +1,64 @@
+/* tim nhung film co thoi luong  lon hon trung binh cac bo phim */
+
+select 
+film_Id,
+title
+from film
+where length > (select avg(length) from film)
+
+/* tim nhung phim co o store 2 it nhat 3 lan */
+select 
+film_id,
+title
+from film
+where  film_id in 
+(select 
+film_id
+from inventory
+where store_id = 2
+group by film_id
+having count(film_id) > 3)
+
+
+
+
+/* tim nhung kh den tu california da chi tieu nhieu hon 100 */
+
+
+select * 
+from customer a
+join address b
+on a.address_id = b.address_id
+where b.district = 'California'
+and customer_Id in (select 
+customer_id
+from payment
+group by customer_Id
+having sum(amount) > 100
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
